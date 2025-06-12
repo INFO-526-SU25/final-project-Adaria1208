@@ -1,8 +1,8 @@
 ---
-title: "Proposal title"
+title: "Water Insecurity and Plumbing Access in U.S. Counties (2022-2023)"
 subtitle: "Proposal"
-author: 
-  - name: "Team Name"
+author: "Adaria Blackwell and Jelani Butler"
+ - name: "Team Name"
     affiliations:
       - name: "School of Information, University of Arizona"
 description: "Project description"
@@ -29,16 +29,60 @@ library(tidyverse)
 ```{r}
 #| label: load-dataset
 #| message: false
+
+data_2022 <- read_csv("data/2025-01-28/water_insecurity_2022.csv")
+data_2023 <- read_csv("data/2025-01-28/water_insecurity_2023.csv")
+
+
+
+# Add a Year column to each if it’s not already there
+data_2022 <- data_2022 |> mutate(Year = 2022)
+data_2023 <- data_2023 |> mutate(Year = 2023)
+
+# Combine them
+water_data <- bind_rows(data_2022, data_2023)
 ```
 
-A brief description of your dataset including its provenance, dimensions, etc. as well as the reason why you chose this dataset.
+### Dataset Description
 
-Make sure to load the data and use inline code for some of this information.
+This dataset contains U.S. county-level data on indoor plumbing access from the **American Community Survey (ACS)**, accessed using the `tidycensus` package. It captures social vulnerability indicators related to water insecurity for the years **2022 and 2023**.
 
-## Questions
+Each row represents a single county in a specific year, and includes the following variables:
 
-The two questions you want to answer.
+-   `GEOID`: Geographic identifier (FIPS code)\
+-   `Name`: County and state\
+-   `Year`: Year of the data (2022 or 2023)\
+-   `Total_Pop`: Total population in the county\
+-   `Plumbing`: Number of households with complete indoor plumbing\
+-   `Percent_Lacking_Plumbing`: Percentage of households without complete plumbing\
+-   `geometry`: Spatial polygon geometry for mapping
 
-## Analysis plan
+The dataset contains `r nrow(water_data)` observations from `r length(unique(water_data$Name))` unique counties. Data is provided for `r length(unique(water_data$Year))` years: `r paste(sort(unique(water_data$Year)), collapse = " and ")`.
 
--   A plan for answering each of the questions including the variables involved, variables to be created (if any), external data to be merged in (if any).
+This spatial dataset supports both statistical and geospatial analysis of plumbing access across the U.S., with built-in support for mapping using the `geometry` column.
+
+I was curious to explore how access to something as essential as indoor plumbing varies across the U.S. It seemed like a challenge—and a unique opportunity—to better understand how plumbing access might be influenced by or influence population trends, and whether any geographic patterns stand out.
+
+## Questions/Analysis plan
+
+Question1: How has access to complete indoor plumbing changed from 2022 to 2023, and is this change associated with population size across U.S. counties.
+
+-   Variables: Year, Percent_Lacking_Plumbing, and Total_Pop
+
+-   Plan:
+
+    -   Compare summary statistics and distributions across years.
+
+    -   Use scatterplots or regression to examine how population size relates to changes in plumbing insecurity.
+
+    -   Possibly calculate change scores (2023 % - 2022 %) if counties appear in both years.
+
+Question2: Do counties with higher plumbing insecurity tend to cluster geographically, and does this clustering differ between 2022 and 2023?
+
+-   Variables: Percent_Lacking_Plumbing, Name and GEOID (for location), and year
+
+-   Plan:
+
+    -   Group counties into "high", "moderate", and "low" plumbing insecurity.
+
+    -   Create maps to visualize regional disparities and compare maps across years to identify shifts.
