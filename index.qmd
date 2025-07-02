@@ -1,8 +1,8 @@
 ---
-title: "Project Title"
+title: "Water Insecurity and Plumbing Access in U.S. Counties (2022-2023)"
 subtitle: "INFO 526 - Summer 2024 - Final Project"
 author: 
-  - name: "Team name"
+  - name: "Adaria Blackwell and Jelani Butler"
     affiliations:
       - name: "School of Information, University of Arizona"
 description: "Project description"
@@ -20,3 +20,78 @@ execute:
 ## Abstract
 
 Add project abstract here.
+
+# Introduction
+
+Add project introduction here
+
+## **Question 1: Is Plumbing Access Change Related to Population Size?**
+
+### **Introduction**
+
+One question we aimed to answer was: Is there a relationship between changes in population size and changes in plumbing insecurity between 2022 and 2023? We were curious whether counties that experienced population growth were more likely to improve plumbing access, or whether shrinking counties struggled more with infrastructure loss. This question helps uncover whether demographic shifts are tied to changes in essential services like indoor plumbing.
+
+To answer this, we used two key variables from the dataset: `Total_Pop` (the total population per county) and `Percent_Lacking_Plumbing` (the percent of households without complete indoor plumbing). By reshaping the data to view changes in both variables over time, we could examine whether counties that grew or shrank in size also experienced changes in plumbing access.
+
+### **Approach**
+
+We used two different types of visualizations to address this question. The first is a scatterplot, which shows the relationship between population change (2023 population minus 2022 population) and the change in plumbing insecurity (the difference in percentage of households lacking plumbing between 2023 and 2022). A regression line was added to visualize any potential correlation. This plot is ideal because it allows us to assess both the direction and strength of any relationship between the two numeric variables.
+
+The second visualization is a histogram, which shows the distribution of plumbing access changes across all counties. This helps us answer a slightly different part of the question—how widespread were improvements vs. declines, and did most counties follow a consistent trend? A histogram is appropriate here because it gives us a clearer understanding of the overall direction of change, especially when paired with the scatterplot’s insight into the population connection. Together, these plots offer a more complete picture of how plumbing access has shifted across U.S. counties.
+
+## **Analysis**
+
+To investigate the relationship between population change and changes in plumbing insecurity, we reshaped the dataset using `pivot_wider()` to create side-by-side columns for 2022 and 2023 values. We then created two new variables: `change_plumbing` and `change_population`, which represent the difference in plumbing access and total population for each county from 2022 to 2023.
+
+Below are the code blocks used to conduct the analysis:
+
+```{r}
+library(tidyverse)
+library(sf)
+
+# Reshape and compute differences
+change_data <- water_data %>%
+  select(geoid, name, year, total_pop, percent_lacking_plumbing) %>%
+  pivot_wider(names_from = year, values_from = c(total_pop, percent_lacking_plumbing)) %>%
+  mutate(
+    change_plumbing = percent_lacking_plumbing_2023 - percent_lacking_plumbing_2022,
+    change_population = total_pop_2023 - total_pop_2022
+  )
+```
+
+We first visualized the relationship between population change and plumbing insecurity change using a scatterplot:
+
+```{r}
+ggplot(change_data, aes(x = change_population, y = change_plumbing)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  coord_cartesian(xlim = c(-100, 100)) +
+  labs(
+    title = "Change in Plumbing Access vs. Change in Population (2022–2023)",
+    subtitle = "Zoomed to ±100 population change",
+    x = "Change in Population (2023 - 2022)",
+    y = "Change in % Lacking Plumbing (2023 - 2022)"
+  ) +
+  theme_minimal()
+```
+
+We then explored the overall distribution of plumbing access change using a histogram:
+
+```{r}
+ggplot(change_data, aes(x = change_plumbing)) +
+  geom_histogram(binwidth = 0.01, fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribution of Change in Plumbing Access (2022–2023)",
+    x = "Change in % Lacking Plumbing", 
+    y = "Number of Counties"
+  ) +
+  theme_minimal()
+```
+
+## **Discussion**
+
+The scatterplot of plumbing access change versus population change reveals no clear correlation between the two variables. The regression line is nearly flat, suggesting that population growth or decline alone does not meaningfully predict whether plumbing access improved or worsened in a county. Even after zooming into counties with a modest population change of ±100, the variation in plumbing insecurity remained scattered with no dominant trend.
+
+The histogram complements this insight by showing that most counties had very small changes in plumbing insecurity between 2022 and 2023. The distribution is centered around zero, with only a few counties experiencing more dramatic increases or decreases. This suggests that for the majority of U.S. counties, plumbing access remained relatively stable during this period.
+
+Together, these visualizations indicate that plumbing access change is not driven by population shifts alone. Other factors—such as rural infrastructure investment, socioeconomic status, or state-level policies—may play a more significant role. This finding raises important questions about how equitable access to basic services like indoor plumbing is being maintained, particularly in under-resourced areas.
