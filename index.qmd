@@ -19,11 +19,13 @@ execute:
 
 ## Abstract
 
-Add project abstract here.
+Access to complete indoor plumbing is a foundational aspect of public health and infrastructure equity, yet disparities persist across U.S. counties—particularly in regions with marginalized populations. This project explores county-level plumbing insecurity using data from the 2022 and 2023 American Community Survey (ACS). We address two central questions: (1) Is the change in plumbing insecurity related to population shifts? and (2) Are there noticeable discrepancies in plumbing access across Arizona counties, especially among counties with high Indigenous populations? Using visualizations including scatterplots, histograms, choropleth maps, and bar charts, we analyze both temporal and geographic variation in plumbing access. Our findings reveal minimal correlation between population change and plumbing insecurity overall, but significant localized disparities in Arizona, where plumbing access appears tied to both income and Indigenous presence. These results underscore the need for targeted infrastructure investment and deeper analysis of structural inequities in resource distribution.
 
 # Introduction
 
-Add project introduction here
+Complete indoor plumbing remains a basic yet vital service that ensures sanitation, dignity, and health for individuals and communities. While plumbing infrastructure is often assumed to be universal in the United States, substantial gaps in access persist—particularly in rural, low-income, and Indigenous communities. These disparities reflect long-standing patterns of disinvestment, social marginalization, and geographic isolation. This project uses public data to investigate where and how these disparities are changing, and what social or demographic factors may help explain them.
+
+We focus on two research questions. First, we examine whether changes in plumbing insecurity between 2022 and 2023 are associated with changes in population size at the county level. This helps us understand whether demographic shifts influence access to basic infrastructure. Second, we zoom in on the state of Arizona, where we explore geographic differences in plumbing access in 2023 and assess whether these disparities correspond to counties with high Indigenous populations or low personal income. Arizona presents a compelling case study due to its unique combination of tribal lands, rural counties, and contrasting income levels. By analyzing these two questions, we aim to shed light on both broad trends and localized inequities in access to plumbing—an issue that is as infrastructural as it is deeply social.
 
 ## **Question 1: Is Plumbing Access Change Related to Population Size?**
 
@@ -95,3 +97,101 @@ The scatterplot of plumbing access change versus population change reveals no cl
 The histogram complements this insight by showing that most counties had very small changes in plumbing insecurity between 2022 and 2023. The distribution is centered around zero, with only a few counties experiencing more dramatic increases or decreases. This suggests that for the majority of U.S. counties, plumbing access remained relatively stable during this period.
 
 Together, these visualizations indicate that plumbing access change is not driven by population shifts alone. Other factors—such as rural infrastructure investment, socioeconomic status, or state-level policies—may play a more significant role. This finding raises important questions about how equitable access to basic services like indoor plumbing is being maintained, particularly in under-resourced areas.
+
+# **Question 2: Are there any discrepancies within the local Arizona counties in 2023?**
+
+## **Introduction**
+
+As a current resident of Arizona, I have observed significant disparities in quality of life between Indigenous and non-Indigenous populations, particularly across various counties. Ideally, local tax revenues should support infrastructure and public services that enhance the well-being of all residents. To investigate this issue further, I will conduct a data-driven analysis and develop a map that visualizes disparities in access to plumbing infrastructure across Arizona counties. This analysis seeks to determine whether counties with substantial Indigenous populations are disproportionately affected by inadequate plumbing services.
+
+Building on the approach used in Question 1, this analysis will utilize the TidyTuesday dataset, specifically focusing on the variable percent_lacking_plumbing, which represents the percentage of households lacking complete plumbing facilities. We will compare this metric across all counties in Arizona, using the geoid variable to filter counties based on U.S. Census Bureau identifiers. It is important to note that data for 5 of Arizona’s 15 counties is missing from the dataset, which may influence the scope and interpretation of the findings.
+
+## **Approach**
+
+The primary approach to this analysis begins with preparing the data for spatial visualization using ggplot2. When working with geospatial data, the range of compatible plot types is more limited, requiring careful data preparation. In this case, several dataset joins are necessary to enable spatial plotting, which will be handled using the sf (Simple Features) package in R. These joins ensure that geographic identifiers align correctly across datasets to support accurate mapping.
+
+In addition to the TidyTuesday dataset, I will incorporate data from the "Personal Income by County and Metropolitan Area, 2023" report published by the U.S. Bureau of Economic Analysis (BEA), available at bea.gov. This dataset provides personal income figures for each county in Arizona. I will use this data to create a bar chart that visualizes the variation in personal income across Arizona counties in 2023, offering a complementary perspective to the plumbing infrastructure analysis.
+
+## **Analysis**
+
+To ensure that only Arizona counties were included in the analysis, I filtered the dataset using the geoid variable, selecting only those codes corresponding to counties within the state of Arizona.
+
+```{r}
+
+#load the raw data
+
+pacman::p_load(tidymodels,here,
+               tidyverse, tidycensus, sf,janitor, scales,ggrep)
+
+
+AZwater22<-water_insecurity_2022 %>%
+    filter(geoid %in% c("04001", "04013", "04015", "04005", "04025", 
+              "04021", "04027", "04017", "04003", "04019"))
+              
+glimpse(AZwater22)
+
+AZwater23<-water_insecurity_2023 %>%
+  filter(geoid %in% c("04001", "04013", "04015", "04005", "04025", 
+                      "04021", "04027", "04017", "04003", "04019"))
+
+```
+
+After generating the necessary code for the map visualization, I performed a join between the spatial map data and the county-level dataset using the geoid column. This column serves as a unique identifier for each county across the United States, ensuring accurate alignment between geographic boundaries and associated data values.
+
+```{r}
+az23_map <- az_counties |>
+  left_join(AZwater23geo, by = "geoid")
+
+```
+
+Finally, I categorized the data into bins to facilitate clearer interpretation and visual distinction on the map. Each bin was assigned a specific shade from a red color palette, with each successive bin represented by a slightly darker accent. This gradient approach enhances the visual impact of the map, making disparities in plumbing access more immediately apparent.
+
+```{r}
+ggplot(data = az23bin) +
+  geom_sf(aes(fill = plumbing_bins)) +
+  geom_sf_text(aes(label = name.x), size = 3, color = "black") +
+  scale_fill_manual(
+    name = "Lacking Plumbing in 2023 (%)",
+    values = c(
+      "0-1%" = "#fee5d9",
+      "1-2%" = "#fcae91",
+      "2-3%" = "#fb6a4a",
+      "3-4%" = "#de2d26",
+      "4-5%" = "#a50f15"
+      
+    ),
+    na.value = "white"
+  ) +
+  
+  labs(
+    x = "Longitude",
+    y = "Latitude",
+    title = "Percentage of Households Lacking Plumbing in Arizona (2023)"
+  ) +
+  theme_minimal()
+
+```
+
+Upon observing that the areas with the highest rates of inadequate plumbing infrastructure tend to be those with higher concentrations of Indigenous populations, I sought to explore whether there is a correlation between plumbing access and income levels in these regions. Specifically, I aimed to determine if lower personal income is a contributing factor to the disparities in plumbing infrastructure, particularly in counties with significant Indigenous populations.
+
+```{r}
+ggplot(IP_clean, aes(x = Counties, y = `2023`, fill = IP_Indicator)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("IP" = "#de2d26", "Other" = "steelblue")) +
+  scale_y_continuous(labels = dollar_format()) +
+  labs(
+    title = "2023 Income per Capita by County in Arizona",
+    x = "County",
+    y = "Income (USD)",
+    caption = "Source: U.S. Bureau of Economic Analysis"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+## **Discussion**
+
+In theory, local governments allocate tax revenues to improve quality of life through investments in infrastructure, social programs, and public services. Therefore, counties with higher per capita income—assuming a proportional tax structure—should have greater fiscal capacity to support such improvements. However, when examining both the plumbing access and income data, a concerning pattern emerges: counties with significant Indigenous populations, such as Navajo, Apache, and Coconino, exhibit some of the highest rates of inadequate plumbing infrastructure, while also ranking among the lowest in per capita income.
+
+An exception to this trend is Coconino County, which has the second-highest per capita income in the state but still shows a notable lack of plumbing access. This anomaly suggests that income alone may not fully explain infrastructure disparities. One possible explanation is that Coconino is a geographically and demographically mixed county, where Indigenous communities—often located on tribal lands—may experience disproportionately lower access to basic infrastructure despite the county’s overall higher income levels. Further research is needed to disaggregate the data within Coconino County to better understand the distribution of income and infrastructure access across different population groups and geographic areas.
