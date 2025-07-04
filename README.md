@@ -1,7 +1,9 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/5Mx2IIjf)
-# project-final
+# Presentation Video Link
+
+[Click here to watch the video](https://arizona.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=a02cf7fd-ef35-4f6c-8d13-b31001145344)
 
 Final Project repo for INFO 526 - Summer 2024.
 
 #### Disclosure:
-Derived from the original course by Mine Çetinkaya-Rundel @ Duke University
+
+Derived from the original course by Mine Çetinkaya-Rundel \@ Duke University
