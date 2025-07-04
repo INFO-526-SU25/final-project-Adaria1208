@@ -1,0 +1,183 @@
+---
+title: "Question 1 and 2 Code"
+editor: visual
+---
+
+# Question1
+
+```{r}
+library(tidyverse)
+library(sf)
+
+# (Assume water_data has been loaded and GEOID fixed/renamed as needed)
+
+# Reshape the data so that you have separate columns for 2022 and 2023 values:
+change_data <- water_data %>%
+  select(geoid, name, year, total_pop, percent_lacking_plumbing) %>%
+  pivot_wider(names_from = year, values_from = c(total_pop, percent_lacking_plumbing)) %>%
+  # Compute changes:
+  mutate(
+    change_plumbing = percent_lacking_plumbing_2023 - percent_lacking_plumbing_2022,
+    change_population = total_pop_2023 - total_pop_2022
+  )
+
+
+ggplot(change_data, aes(x = change_population, y = change_plumbing)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  coord_cartesian(xlim = c(-100, 100)) +  # Zoom in on the x-axis
+  labs(
+  title = "Change in Plumbing Access vs. Change in Population (2022–2023)",
+  subtitle = "Zoomed to ±100 population change",
+  x = "Change in Population (2023 - 2022)",
+  y = "Change in % Lacking Plumbing (2023 - 2022)"
+) +
+  theme_minimal()
+
+
+
+
+
+
+```
+
+```{r}
+ggplot(change_data, aes(x = change_plumbing)) +
+  geom_histogram(binwidth = 0.01, fill = "steelblue", color = "white") +
+  labs(title = "Distribution of Change in Plumbing Access (2022–2023)",
+       x = "Change in % Lacking Plumbing", y = "Number of Counties") +
+  theme_minimal()
+
+```
+
+```{r}
+# Correlation test:
+cor_test <- cor.test(change_data$total_pop_2022, change_data$change_plumbing)
+print(cor_test)
+
+# Linear regression:
+lm_model <- lm(change_plumbing ~ total_pop_2022, data = change_data)
+summary(lm_model)
+
+```
+
+# Question 2
+
+#\| label: load-packages #\| include: false
+
+# Load packages here
+
+pacman::p_load(tidymodels,here, tidyverse, tidycensus, sf,janitor, tigris, rmapshaper, scales,ggrep)
+
+water_insecurity_2022 \<- readr::read_csv('[https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-01-28/water_insecurity_2022.csv')](https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-01-28/water_insecurity_2022.csv')) water_insecurity_2023 \<- readr::read_csv('[https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-01-28/water_insecurity_2023.csv')](https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-01-28/water_insecurity_2023.csv'))
+
+------------------------------------------------------------------------
+
+\`\` #grabbing only the AZ data in 2022 this process can be replicated on the 2023 data #but due to a lack of time and a lack of disparity between the datasets, I will only show this process with the 2022 data.
+
+```         
+
+AZwater22<-water_insecurity_2022 %>%
+    filter(geoid %in% c("04001", "04013", "04015", "04005", "04025", 
+              "04021", "04027", "04017", "04003", "04019"))
+              
+glimpse(AZwater22)
+
+AZwater23<-water_insecurity_2023 %>%
+  filter(geoid %in% c("04001", "04013", "04015", "04005", "04025", 
+                      "04021", "04027", "04017", "04003", "04019"))
+
+# now convert gemomrety from a text string to a gemoetry attribute
+
+AZwater22geo<- AZwater22%>%
+  mutate(
+    geometry = purrr::map(geometry, \(geo) {
+      eval(parse(text = geo))
+    } )
+  )
+
+glimpse(AZwater22geo)
+    
+AZwater23geo<- AZwater23%>%
+  mutate(
+    geometry = purrr::map(geometry, \(geo) {
+      eval(parse(text = geo))
+    } )
+  )
+glimpse(AZwater23geo)
+
+# Time to create the AZ map 
+
+az_counties <- counties(cb = TRUE) |>
+  st_transform("EPSG:5070") |>
+  janitor::clean_names() |>
+  filter(state_name == "Arizona")
+
+#Join the data to make sure that both data sets are together
+
+az22_map <- az_counties |>
+  left_join(AZwater22geo, by = "geoid")
+
+az23_map <- az_counties |>
+  left_join(AZwater23geo, by = "geoid")
+
+az23_map[c("name.x", "percent_lacking_plumbing")]
+```
+
+#we are going to have to bin the data in order to make sure that we have a proper #ranges for percentages \`\`\`
+
+az22bin \<- az22_map \|\> mutate(plumbing_bins = cut( percent_lacking_plumbing, breaks = c(0, 1, 2, 3, 4, 5), labels = c("0-1%", "1-2%", "2-3%", "3-4%", "4-5%"), include.lowest = TRUE ))
+
+glimpse(az22bin)
+
+az23bin \<- az23_map \|\> mutate(plumbing_bins = cut( percent_lacking_plumbing, breaks = c(0, 1, 2, 3, 4, 5), labels = c("0-1%", "1-2%", "2-3%", "3-4%", "4-5%"), include.lowest = TRUE ))
+
+glimpse(az23bin)
+
+#time to make the map after making the bins work
+
+ggplot(data = az22bin) + geom_sf(aes(fill = plumbing_bins)) + geom_sf_text(aes(label = name.x), size = 3, color = "black") + scale_fill_manual( name = "Lacking Plumbing in 2022 (%)", values = c( "0-1%" = "#fee5d9", "1-2%" = "#fcae91", "2-3%" = "#fb6a4a", "3-4%" = "#de2d26", "4-5%" = "#a50f15"
+
+```         
+),
+na.value = "white"
+```
+
+) +
+
+labs( x = "Longitude", y = "Latitude", title = "Percentage of Households Lacking Plumbing in Arizona (2022)" ) + theme_minimal()
+
+ggplot(data = az23bin) + geom_sf(aes(fill = plumbing_bins)) + geom_sf_text(aes(label = name.x), size = 3, color = "black") + scale_fill_manual( name = NULL, values = c( "0-1%" = "#fee5d9", "1-2%" = "#fcae91", "2-3%" = "#fb6a4a", "3-4%" = "#de2d26", "4-5%" = "#a50f15"
+
+```         
+),
+na.value = "white"
+```
+
+) +
+
+labs( x = "Longitude", y = "Latitude", title = "Percentage of Households Lacking\nPlumbing in Arizona (2023)", caption = "SOURCE: Tidytuesday" ) + theme_minimal()
+
+# There is a need for plumbing in the indigienous counties. Tax income becomes revenue for the state.
+
+# If there are low income counties, there would be a lack of funding to deal with the plumbing. So can I create some correlation between the high lack
+
+# of plumbing and the native american counties having a low income per capita?
+
+lapi1124 \<- read_excel("C:/Users/UA67142/Downloads/lapi1124.xlsx", sheet = "AZ Data") View(lapi1124)
+
+lapi1124_order\<- lapi1124 %\>% mutate(Counties = as.factor(Counties)) %\>% mutate(Counties = fct_reorder(Counties, `2023`))
+
+levels(lapi1124_order\$Counties)
+
+view(lapi1124_order)
+
+# Now I have to make sure that the indigienous counties that were highligthed in the
+
+#previous map are highlighted in the bar chart
+
+IP \<- c("Navajo", "Coconino", "Apache")
+
+IP_clean\<- lapi1124_order %\>% mutate(IP_Indicator=ifelse(Counties %in% IP,"IP", "Other"))
+
+ggplot(IP_clean, aes(x = Counties, y = `2023`, fill = IP_Indicator)) + geom_bar(stat = "identity") + scale_fill_manual(values = c("IP" = "#de2d26", "Other" = "steelblue")) + scale_y_continuous(labels = dollar_format()) + labs( title = "2023 Income per Capita by County in Arizona", x = "County", y = "Income (USD)", caption = "Source: U.S. Bureau of Economic Analysis" ) + theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
