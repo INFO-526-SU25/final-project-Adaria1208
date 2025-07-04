@@ -2,7 +2,7 @@
 title: "Water Insecurity and Plumbing Access in U.S. Counties (2022-2023)"
 subtitle: "Proposal"
 author: "Adaria Blackwell and Jelani Butler"
- - name: "Team Name"
+ - name: "Blackwell-Butler"
     affiliations:
       - name: "School of Information, University of Arizona"
 description: "Project description"
@@ -86,3 +86,134 @@ Question2: Do counties with higher plumbing insecurity tend to cluster geographi
     -   Group counties into "high", "moderate", and "low" plumbing insecurity.
 
     -   Create maps to visualize regional disparities and compare maps across years to identify shifts.
+
+# Code
+
+## Question 1:
+
+```{r}
+library(tidyverse)
+library(sf)
+
+# (Assume water_data has been loaded and GEOID fixed/renamed as needed)
+
+# Reshape the data so that you have separate columns for 2022 and 2023 values:
+change_data <- water_data %>%
+  select(geoid, name, year, total_pop, percent_lacking_plumbing) %>%
+  pivot_wider(names_from = year, values_from = c(total_pop, percent_lacking_plumbing)) %>%
+  # Compute changes:
+  mutate(
+    change_plumbing = percent_lacking_plumbing_2023 - percent_lacking_plumbing_2022,
+    change_population = total_pop_2023 - total_pop_2022
+  )
+
+
+ggplot(change_data, aes(x = change_population, y = change_plumbing)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  coord_cartesian(xlim = c(-100, 100)) +  # Zoom in on the x-axis
+  labs(
+  title = "Change in Plumbing Access vs. Change in Population (2022–2023)",
+  subtitle = "Zoomed to ±100 population change",
+  x = "Change in Population (2023 - 2022)",
+  y = "Change in % Lacking Plumbing (2023 - 2022)"
+) +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(change_data, aes(x = change_plumbing)) +
+  geom_histogram(binwidth = 0.01, fill = "steelblue", color = "white") +
+  labs(title = "Distribution of Change in Plumbing Access (2022–2023)",
+       x = "Change in % Lacking Plumbing", y = "Number of Counties") +
+  theme_minimal()
+```
+
+## Question 2:
+
+```{r}
+  
+AZwater22<-data_2022 %>%
+    filter(geoid %in% c("04001", "04013", "04015", "04005", "04025", 
+              "04021", "04027", "04017", "04003", "04019"))
+              
+glimpse(AZwater22)
+
+AZwater23<-data_2023 %>%
+  filter(geoid %in% c("04001", "04013", "04015", "04005", "04025", 
+                      "04021", "04027", "04017", "04003", "04019"))
+
+# now convert gemomrety from a text string to a gemoetry attribute
+
+AZwater22geo<- AZwater22%>%
+  mutate(
+    geometry = purrr::map(geometry, \(geo) {
+      eval(parse(text = geo))
+    } )
+  )
+
+glimpse(AZwater22geo)
+    
+AZwater23geo<- AZwater23%>%
+  mutate(
+    geometry = purrr::map(geometry, \(geo) {
+      eval(parse(text = geo))
+    } )
+  )
+glimpse(AZwater23geo)
+
+# Time to create the AZ map 
+
+az_counties <- counties(cb = TRUE) |>
+  st_transform("EPSG:5070") |>
+  janitor::clean_names() |>
+  filter(state_name == "Arizona")
+
+#Join the data to make sure that both data sets are together
+
+az22_map <- az_counties |>
+  left_join(AZwater22geo, by = "geoid")
+
+az23_map <- az_counties |>
+  left_join(AZwater23geo, by = "geoid")
+
+az23_map[c("name.x", "percent_lacking_plumbing")]
+```
+
+```{r}
+#we are going to have to bin the data in order to make sure that we have a proper #ranges for percentages \`\`\`
+
+az22bin <- az22_map |> mutate(plumbing_bins = cut( percent_lacking_plumbing, breaks = c(0, 1, 2, 3, 4, 5), labels = c("0-1%", "1-2%", "2-3%", "3-4%", "4-5%"), include.lowest = TRUE ))
+
+glimpse(az22bin)
+
+az23bin <- az23_map |> mutate(plumbing_bins = cut( percent_lacking_plumbing, breaks = c(0, 1, 2, 3, 4, 5), labels = c("0-1%", "1-2%", "2-3%", "3-4%", "4-5%"), include.lowest = TRUE ))
+
+glimpse(az23bin)
+
+#time to make the map after making the bins work
+
+ggplot(data = az22bin) + geom_sf(aes(fill = plumbing_bins)) + geom_sf_text(aes(label = name.x), size = 3, color = "black") + scale_fill_manual( name = "Lacking Plumbing in 2022 (%)", values = c( "0-1%" = "#fee5d9", "1-2%" = "#fcae91", "2-3%" = "#fb6a4a", "3-4%" = "#de2d26", "4-5%" = "#a50f15"
+),
+na.value = "white"
+
+) +
+
+labs( x = "Longitude", y = "Latitude", title = "Percentage of Households Lacking Plumbing in Arizona (2022)" ) + theme_minimal()
+
+
+```
+
+```{r}
+ggplot(data = az23bin) + geom_sf(aes(fill = plumbing_bins)) + geom_sf_text(aes(label = name.x), size = 3, color = "black") + scale_fill_manual( name = NULL, values = c( "0-1%" = "#fee5d9", "1-2%" = "#fcae91", "2-3%" = "#fb6a4a", "3-4%" = "#de2d26", "4-5%" = "#a50f15"
+),
+na.value = "white"
+) +
+
+labs( x = "Longitude", y = "Latitude", title = "Percentage of Households Lacking\nPlumbing in Arizona (2023)", caption = "SOURCE: Tidytuesday" ) + theme_minimal()
+```
+
+```{r}
+
+```
